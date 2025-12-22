@@ -1,0 +1,97 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Geocoding API",
+    "version": "1.0.0",
+    "description": "Forward and reverse geocoding endpoints"
+  },
+  "paths": {
+    "/geocode": {
+      "get": {
+        "summary": "Forward geocoding (query params)",
+        "parameters": [
+          { "name": "stn", "in": "query", "schema": { "type": "string" } },
+          { "name": "hnr", "in": "query", "schema": { "type": "string" } },
+          { "name": "plz", "in": "query", "schema": { "type": "string" } },
+          { "name": "ort", "in": "query", "schema": { "type": "string" } },
+          {
+            "name": "rows",
+            "in": "query",
+            "schema": { "type": "integer", "default": 10 },
+            "description": "Max number of results"
+          }
+        ],
+        "responses": {
+          "200": { "description": "Geocoding result" },
+          "400": { "description": "Invalid input" }
+        }
+      },
+      "post": {
+        "summary": "Forward geocoding (JSON body)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "strasse": { "type": "string" },
+                  "hausnummer": { "type": "string" },
+                  "plz": { "type": "string" },
+                  "ort": { "type": "string" },
+                  "rows": { "type": "integer", "default": 10 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Geocoding result" },
+          "400": { "description": "Invalid input" }
+        }
+      }
+    },
+
+    "/reverse": {
+      "get": {
+        "summary": "Reverse geocoding (query params)",
+        "parameters": [
+          { "name": "lat", "in": "query", "required": true, "schema": { "type": "number" } },
+          { "name": "lon", "in": "query", "required": true, "schema": { "type": "number" } },
+          { "name": "maxDistance", "in": "query", "schema": { "type": "number" } },
+          { "name": "maxResults", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Reverse geocoding result" },
+          "400": { "description": "Missing coordinates" },
+          "404": { "description": "No match found" }
+        }
+      },
+      "post": {
+        "summary": "Reverse geocoding (JSON body)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["lat", "lon"],
+                "properties": {
+                  "lat": { "type": "number" },
+                  "lon": { "type": "number" },
+                  "maxDistance": { "type": "number" },
+                  "maxResults": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Reverse geocoding result" },
+          "400": { "description": "Missing coordinates" },
+          "404": { "description": "No match found" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,38 @@
+services:
+  # --- Apache Solr (Address Index) ---
+  solr:
+    image: solr:9
+    container_name: geocoder_solr
+    restart: unless-stopped
+    environment:
+      SOLR_JAVA_MEM: "-Xms2g -Xmx4g"
+    volumes:
+      - ./solr:/var/solr
+    # for Production dont expose port
+    ports:
+      - "8983:8983"
+    command: ["solr-precreate", "addresses"]
+    networks:
+      - docker_shared_net
+
+  # --- Flask Application ---
+  web:
+    build: ./backend
+    container_name: geocoder_web
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      FLASK_ENV: production
+      PYTHONUNBUFFERED: 1 # easier debugging for development, should be 0 for PROD
+      SOLR_URL: http://geocoder_solr:8983/solr/addresses
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+    networks:
+      - docker_shared_net
+
+networks:
+  docker_shared_net:
+    external: true
+
