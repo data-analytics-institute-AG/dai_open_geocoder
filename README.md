@@ -15,7 +15,6 @@ Dieses Projekt ist ein quelloffener Geocoder.
 - [Getting Started](#getting-started)
 - [Nutzung](#nutzung)
 - [Konfiguration](#konfiguration)
-- [Contributing](#contributing)
 - [Lizenz](#lizenz)
 
 ---
@@ -124,14 +123,6 @@ Der Geokoder ist konfigurierbar ohne den Code selbst ändern zu müssen. Dazu is
 - GEOCODER_PARAMS: eine einfach kommaseparierte Liste von durchsuchbaren Parametern. Die Parameter müssen namentlich mit indizierten Feldern im Solr-Core übereinstimmen.
 - GEOCODER_STRATEGIES: Ein JSON, welches kontrolliert in welcher Reihenfolge welche Art von Anfragen gemacht werden. Dabei können die durchsuchten Felder und die Strategie (Exakt oder Fuzzy) festgelegt werden.
 - GEOCODER_DEFINITION: Konfiguration für die Übersetzung von technischen Namen aus solr in das json-Ergebnis.
-
----
-
-## Contributing
-
-TODO
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 
 ---
 
