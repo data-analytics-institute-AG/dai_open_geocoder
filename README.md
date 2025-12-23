@@ -112,10 +112,6 @@ Die verwendeten Daten unterliegen unterschiedlicher [Lizenzen](https://github.co
 
 ## Konfiguration
 
-### Solr
-
-TODO: Standard solrconfig.xml und schema.xml bereitstellen und dokumentieren.
-
 ### Umgebungsvariablen
 
 Der Geokoder ist konfigurierbar ohne den Code selbst ändern zu müssen. Dazu ist in der .env.example eine beispielhafte Konfiguration vorhanden. Die Konfiguration unterstützt momentan 3 Parameter:
