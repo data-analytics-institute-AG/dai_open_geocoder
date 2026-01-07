@@ -15,7 +15,6 @@ Dieses Projekt ist ein quelloffener Geocoder.
 - [Getting Started](#getting-started)
 - [Nutzung](#nutzung)
 - [Konfiguration](#konfiguration)
-- [Contributing](#contributing)
 - [Lizenz](#lizenz)
 
 ---
@@ -92,17 +91,9 @@ docker compose down
 
 ## Nutzung
 
-- Health check endpoint: TODO
+- API-Dokumentation:
 
-```http
-https://localhost/health
-```
-
-- API-Dokumentation: TODO
-
-```
-https://localhost/docs
-```
+[swagger](https://opengeocoder.dai.institute/swagger/)
 
 - Solr core `addresses`: Der Port sollte im Produktivbetrieb nicht verwendet werden. Dazu muss die entsprechende Zeile im docker-compose.yml einfach auskommentiert werden.
 
@@ -121,25 +112,13 @@ Die verwendeten Daten unterliegen unterschiedlicher [Lizenzen](https://github.co
 
 ## Konfiguration
 
-### Solr
-
-TODO: Standard solrconfig.xml und schema.xml bereitstellen und dokumentieren.
-
 ### Umgebungsvariablen
 
 Der Geokoder ist konfigurierbar ohne den Code selbst ändern zu müssen. Dazu ist in der .env.example eine beispielhafte Konfiguration vorhanden. Die Konfiguration unterstützt momentan 3 Parameter:
 
 - GEOCODER_PARAMS: eine einfach kommaseparierte Liste von durchsuchbaren Parametern. Die Parameter müssen namentlich mit indizierten Feldern im Solr-Core übereinstimmen.
 - GEOCODER_STRATEGIES: Ein JSON, welches kontrolliert in welcher Reihenfolge welche Art von Anfragen gemacht werden. Dabei können die durchsuchten Felder und die Strategie (Exakt oder Fuzzy) festgelegt werden.
-- GEOCODER_DEFINITION: TODO!!! potentiell Konfiguration für Solr und/oder Übersetzung von technischen Namen zu von der API dargestellten Namen.
-
----
-
-## Contributing
-
-TODO
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
+- GEOCODER_DEFINITION: Konfiguration für die Übersetzung von technischen Namen aus solr in das json-Ergebnis.
 
 ---
 
