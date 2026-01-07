@@ -3,7 +3,6 @@ __pycache__/
 
 .env
 
-solr/data
-solr/logs
-nginx/certs
-helper_functions
+solr/data/
+solr/logs/
+helper_functions/

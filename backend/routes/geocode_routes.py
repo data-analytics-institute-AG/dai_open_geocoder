@@ -27,7 +27,7 @@ def geocode():
     # optional: allow client to control how many to return (default 10)
     rows = request.args.get("rows") if request.method == "GET" else (data.get("rows") if isinstance(data, dict) else None)
     try:
-        rows = int(rows) if rows is not None else 10
+        rows = min(int(rows),10) if rows is not None else 10
     except Exception:
         rows = 10
 
