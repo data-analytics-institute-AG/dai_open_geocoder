@@ -275,7 +275,7 @@ def query_reverse(data: dict):
     lat = _coerce_float(data["lat"], "lat")
     lon = _coerce_float(data["lon"], "lon")
     #max_results = _coerce_int(data.get("rows", 10), "rows")
-    max_results = max(min(data.get("rows"), 10), 1)
+    max_results = max(min(int(data.get("rows")), 10), 1)
     max_radius = float(data.get("max_radius", 1000.0))
 
     if max_radius <= 0:
