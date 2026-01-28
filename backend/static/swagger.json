@@ -22,7 +22,19 @@
           }
         ],
         "responses": {
-          "200": { "description": "Geocoding result" },
+  "200": {
+    "description": "Geocoding result",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/GeocodeResult"
+          }
+        }
+      }
+    }
+  },
           "400": { "description": "Invalid input" }
         }
       },
@@ -46,7 +58,19 @@
           }
         },
         "responses": {
-          "200": { "description": "Geocoding result" },
+  "200": {
+    "description": "Geocoding result",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/GeocodeResult"
+          }
+        }
+      }
+    }
+  },
           "400": { "description": "Invalid input" }
         }
       }
@@ -62,7 +86,19 @@
           { "name": "maxResults", "in": "query", "schema": { "type": "integer" } }
         ],
         "responses": {
-          "200": { "description": "Reverse geocoding result" },
+  "200": {
+    "description": "Geocoding result",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/GeocodeResult"
+          }
+        }
+      }
+    }
+  },
           "400": { "description": "Missing coordinates" },
           "404": { "description": "No match found" }
         }
@@ -87,11 +123,69 @@
           }
         },
         "responses": {
-          "200": { "description": "Reverse geocoding result" },
+  "200": {
+    "description": "Geocoding result",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/GeocodeResult"
+          }
+        }
+      }
+    }
+  },
           "400": { "description": "Missing coordinates" },
           "404": { "description": "No match found" }
         }
       }
     }
-  }
+  },
+"components": {
+  "schemas": {
+    "GeocodeResult": {
+      "type": "object",
+      "properties": {
+        "daid": { "type": "string" },
+        "hk_oid": { "type": "string" },
+        "lod2_oid": { "type": ["string", "null"] },
+        "hu_oid": { "type": ["string", "null"] },
+        "stn": { "type": "string" },
+        "hnr": { "type": "integer" },
+        "adz": { "type": ["string", "null"] },
+        "plz": { "type": "string" },
+        "ort": { "type": "string" },
+        "ags8": { "type": "string" },
+        "ott": { "type": ["string", "null"] },
+        "ottschl": { "type": "string" },
+        "gemarkung": { "type": "string" },
+        "gemaschl": { "type": "string" },
+        "bdlm_id": { "type": "string" },
+        "flstkennz": { "type": "string" },
+        "id_raster": { "type": "string" },
+        "lon": { "type": "number", "format": "double" },
+        "lat": { "type": "number", "format": "double" }
+      },
+  "example": {
+    "daid": "DAIDSH0000753000",
+    "hk_oid": "DESHPDHK0005LSog",
+    "lod2_oid": null,
+    "hu_oid": null,
+    "stn": "Hauptstraße",
+    "hnr": 1,
+    "adz": "a",
+    "plz": "12345",
+    "ort": "Berlin",
+    "ags8": "01234567",
+    "ott": "Mitte",
+    "ottschl": "0000",
+    "gemarkung": "Berlin Mitte",
+    "gemaschl": "0123456",
+    "bdlm_id": "DESH3A0900002i32",
+    "flstkennz": "014538001000130008__",
+    "id_raster": "100mN34324E43213",
+    "lon": 10.0045755302,
+    "lat": 53.9989249894
+  }}}}
 }

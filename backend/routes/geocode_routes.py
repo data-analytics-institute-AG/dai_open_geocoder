@@ -48,25 +48,31 @@ def geocode():
 def reverse_geocode():
     """
     Reverse geocoding:
-    - POST: JSON body with {"lat": ..., "lon": ..., "maxResults": ..., "maxDistance": ...}
-    - GET:  Query parameters (?lat=&lon=&maxResults=&maxDistance=)
+    - POST: JSON body with {"lat": ..., "lon": ..., "rows": ..., "maxDistance": ...}
+    - GET:  Query parameters (?lat=&lon=&rows=&maxDistance=)
     """
     if request.method == "POST":
         data = request.get_json(force=True)
         lat = data.get("lat")
         lon = data.get("lon")
         maxDistance = data.get("maxDistance")
-        maxResults = data.get("maxResults")
+        rows = data.get("rows")
     else:
         lat = request.args.get("lat")
         lon = request.args.get("lon")
         maxDistance = request.args.get("maxDistance")
-        maxResults = request.args.get("maxResults")
+        rows = request.args.get("rows")
 
     if not lat or not lon:
         return jsonify({"error": "Missing coordinates (lat, lon)."}), 400
 
-    result = query_reverse({"lat": lat, "lon": lon, "maxResults": maxResults, "maxDistance": maxDistance})
+    if not rows:
+        rows = 10
+
+    if not maxDistance:
+        maxDistance = 1
+
+    result = query_reverse({"lat": lat, "lon": lon, "rows": rows, "maxDistance": maxDistance})
     if result is None:
         return jsonify({"error": "No match found"}), 404
 

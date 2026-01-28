@@ -2,6 +2,8 @@ import os
 import requests
 import json
 import re
+import Levenshtein
+import math
 from urllib.parse import urljoin
 
 
@@ -53,6 +55,13 @@ def _get_strategy_functions():
         "fuzzy": _query_fuzzy,
     }
 
+def _add_quality(d, args):
+    d['quality'] = {}
+    for arg in args:
+        if args[arg] and args[arg] != '':
+            d['quality'][arg] = math.ceil(Levenshtein.ratio(str(args[arg]).lower(), str(d[arg]).lower())*100)
+    return d
+
 def load_mapping():
     mapping_raw = os.getenv("GEOCODER_DEFINITION")
     # Parse mapping
@@ -86,14 +95,17 @@ def _query_exact(rows=5, **kwargs):
     """
     Solr exact query with scoring (edismax). Only non-None kwargs are used.
     """
+    print(f"Parameter in _query_exact: {kwargs}")
     # Build "q" as ANDed exact matches
     # e.g., q = 'plz:"53111" AND ort:"Bonn"'
     q_parts = [f'{k}:"{v}"' for k, v in kwargs.items() if v is not None and v != '']
     q = " AND ".join(q_parts) if q_parts else "*:*"
+    #q = ", ".join(q_parts) if q_parts else "*:*"
 
     params = {
         "defType": "edismax",
         "q": q,
+        #"q.op":"AND",
         "rows": rows,
         "wt": "json",
         "fl": "*",
@@ -154,6 +166,8 @@ def query_address(data: dict, rows: int = 5):
         # Build kwargs dynamically
         kwargs = {p: cleaned.get(p) for p in params_cfg}
 
+        print(f"Parameter in query_address: {kwargs}")
+
         # Remove parameters not listed in this strategy
         for p in params_cfg:
             if p not in strat["params"]:
@@ -164,7 +178,8 @@ def query_address(data: dict, rows: int = 5):
 
         if docs:
             normalized = [_normalize_doc(d) for d in docs]
-            return {"count": len(normalized), "results": normalized, "strategy": name}
+            with_quality = [_add_quality(d, kwargs) for d in normalized]
+            return {"count": len(normalized), "results": with_quality, "strategy": name}
             #return {"strategy": name, "results": normalized, "count": len(normalized)}
 
     return {"count": 0, "results": [],"strategy": None}
@@ -223,7 +238,7 @@ def _query_address_static(data: dict, rows: int = 5):
 
 def _solr_select(params: dict):
     r = _session.get(_SELECT, params=params, timeout=_TIMEOUT)
-    #print("DEBUG: Solr URL called:", r.request.url)
+    print("DEBUG: Solr URL called:", r.request.url)
     r.raise_for_status()
     return r.json()
 
@@ -259,12 +274,10 @@ def query_reverse(data: dict):
 
     lat = _coerce_float(data["lat"], "lat")
     lon = _coerce_float(data["lon"], "lon")
-    max_results = _coerce_int(data.get("max_results", 5), "max_results")
+    #max_results = _coerce_int(data.get("rows", 10), "rows")
+    max_results = max(min(data.get("rows"), 10), 1)
     max_radius = float(data.get("max_radius", 1000.0))
 
-    # sanity limits
-    if max_results < 1: max_results = 1
-    if max_results > 100: max_results = 100
     if max_radius <= 0:
         raise ValueError("max_radius must be > 0 (km)")
 
@@ -279,34 +292,18 @@ def query_reverse(data: dict):
         "sfield": "koordinate",
         "pt": f"{lat},{lon}",
         "fq": f"{{!geofilt sfield=koordinate pt={lat},{lon} d={max_radius}}}",
-        # return standard fields + computed distance as 'distance_km'
-        "fl": "id,plz,ort,strasse,hausnummer,koordinate,score,"
-              "distance_km:geodist()",
+        "fl": "*,distance_km:geodist()",
     }
 
     res = _solr_select(params)
     docs = res.get("response", {}).get("docs", [])
 
     # Normalize result shape; ensure only first array element is returned
-    results = []
-    for d in docs:
-        # ort/strasse/hausnummer may be single values or lists depending on schema
-        def as_list(v):
-            if v is None:
-                return ""
-            return v[0] if isinstance(v, list) else v
+    if docs:
+        normalized = [_normalize_doc(d) for d in docs]
+        return normalized
 
-        results.append({
-            "id": d.get("id"),
-            "plz": d.get("plz"),
-            "ort": d.get("ort"),
-            "strasse": d.get("strasse"),
-            "hausnummer": d.get("hausnummer"),
-            "koordinate": d.get("koordinate"),   # typically "lat,lon" string for LatLonPointSpatialField
-            "distance_km": float(d.get("distance_km", 0.0)),
-        })
-
-    return results
+    return None
 
 def _dynamic_fuzzy(fieldname, token):
     """
