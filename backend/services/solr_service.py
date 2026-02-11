@@ -35,6 +35,11 @@ def _normalize_doc(d):
             #if v and v != '':
                 r[k] = v
         del d['additional_information']
+    # Scores von Solr hinzufügen
+    if 'score' in d:
+        r['solr_score'] = d['score']
+    if 'distance_km' in d:
+        r['distance_km'] = d['distance_km']
     # Start with empty return dict to be filled
     # rtn = {}
     # loop through all result fields and map if possible
@@ -95,7 +100,7 @@ def _query_exact(rows=5, **kwargs):
     """
     Solr exact query with scoring (edismax). Only non-None kwargs are used.
     """
-    print(f"Parameter in _query_exact: {kwargs}")
+    # print(f"Parameter in _query_exact: {kwargs}")
     # Build "q" as ANDed exact matches
     # e.g., q = 'plz:"53111" AND ort:"Bonn"'
     q_parts = [f'{k}:"{v}"' for k, v in kwargs.items() if v is not None and v != '']
@@ -108,7 +113,7 @@ def _query_exact(rows=5, **kwargs):
         #"q.op":"AND",
         "rows": rows,
         "wt": "json",
-        "fl": "*",
+        "fl": "*,score",
     }
 
     return _solr_select(params)
@@ -137,7 +142,7 @@ def _query_fuzzy(rows=5, **kwargs):
         "sow": "true",
         "rows": rows,
         "wt": "json",
-        "fl": "*",
+        "fl": "*,score",
     }
 
     return _solr_select(params)
@@ -152,11 +157,6 @@ def query_address(data: dict, rows: int = 5):
     # Clean inputs dynamically
     cleaned = {p: _clean_str(data.get(p)) for p in params_cfg}
 
-    # Require at least plz or ort (fallback to old rule)
-    # Is this a rule we truly need in a fully dynamic setup?
-    if not _have_plz_or_ort(cleaned.get("plz"), cleaned.get("ort")):
-        raise ValueError("Geocoding requires at least one of: plz or ort")
-
     func_map = _get_strategy_functions()
 
     for strat in strategies_cfg:
@@ -166,7 +166,7 @@ def query_address(data: dict, rows: int = 5):
         # Build kwargs dynamically
         kwargs = {p: cleaned.get(p) for p in params_cfg}
 
-        print(f"Parameter in query_address: {kwargs}")
+        # print(f"Parameter in query_address: {kwargs}")
 
         # Remove parameters not listed in this strategy
         for p in params_cfg:
@@ -238,7 +238,7 @@ def _query_address_static(data: dict, rows: int = 5):
 
 def _solr_select(params: dict):
     r = _session.get(_SELECT, params=params, timeout=_TIMEOUT)
-    print("DEBUG: Solr URL called:", r.request.url)
+    # print("DEBUG: Solr URL called:", r.request.url)
     r.raise_for_status()
     return r.json()
 

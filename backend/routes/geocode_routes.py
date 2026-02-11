@@ -25,7 +25,7 @@ def geocode():
             raw_params = request.form
 
     # optional: allow client to control how many to return (default 10)
-    rows = request.args.get("rows") if request.method == "GET" else (data.get("rows") if isinstance(data, dict) else None)
+    rows = request.args.get("rows") if request.method == "GET" else (raw_params.get("rows") if isinstance(raw_params, dict) else None)
     try:
         rows = min(int(rows),10) if rows is not None else 10
     except Exception:
@@ -52,7 +52,7 @@ def reverse_geocode():
     - GET:  Query parameters (?lat=&lon=&rows=&maxDistance=)
     """
     if request.method == "POST":
-        data = request.get_json(force=True)
+        data = request.get_json()
         lat = data.get("lat")
         lon = data.get("lon")
         maxDistance = data.get("maxDistance")
@@ -66,7 +66,9 @@ def reverse_geocode():
     if not lat or not lon:
         return jsonify({"error": "Missing coordinates (lat, lon)."}), 400
 
-    if not rows:
+    try:
+        rows = min(int(rows),10) if rows is not None else 10
+    except Exception:
         rows = 10
 
     if not maxDistance:

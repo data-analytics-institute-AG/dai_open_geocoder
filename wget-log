@@ -1,0 +1,10 @@
+--2026-02-03 06:56:12--  http://10.10.0.4/geocode?plz=19273
+Connecting to 10.10.0.4:80... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 3967 (3.9K) [application/json]
+Saving to: ‘geocode?plz=19273’
+
+geocode?plz=19273                       0%[                                                                         ]       0  --.-KB/s               geocode?plz=19273                     100%[========================================================================>]   3.87K  --.-KB/s    in 0s      
+
+2026-02-03 06:56:22 (481 MB/s) - ‘geocode?plz=19273’ saved [3967/3967]
+
