@@ -15,43 +15,39 @@ _session = requests.Session()
 def _clean_str(v):
     return (v or "").strip()
 
-def _have_plz_or_ort(plz, ort):
-    return bool(_clean_str(plz)) or bool(_clean_str(ort))
-
 def _as_string(v):
     if v is None: return ""
     return v[0] if isinstance(v, list) else v
 
-def _normalize_doc(d):
+def _normalize_doc(d, args):
     """Return a consistent shape for API consumers."""
-    # Get Mapping solr-Field -> Outputname
-    mapping = load_mapping()
     r = {}
-    # Special handling: flatten additional_information field
-    # for now excluded
+    # TODO: if additional_information is not given, return all "normal" fields of solr
     if 'additional_information' in d:
         values = json.loads(d['additional_information'])
         for k,v in values.items():
             #if v and v != '':
                 r[k] = v
         del d['additional_information']
+    # Qualities auf den Eingangsparametern berechnen
+    r['quality'] = {}
+    for arg in args:
+        if args[arg] and args[arg] != '':
+            if isinstance(d[arg], list):
+            # loop through the options and return best match
+                bestQuality = 0
+                for elem in d[arg]:
+                    quality =  math.ceil(Levenshtein.ratio(str(args[arg]).lower(), str(elem).lower())*100)
+                    if quality > bestQuality:
+                        bestQuality = quality
+                r['quality'][arg] = bestQuality
+            else:
+                r['quality'][arg] = math.ceil(Levenshtein.ratio(str(args[arg]).lower(), str(d[arg]).lower())*100)
     # Scores von Solr hinzufügen
     if 'score' in d:
-        r['solr_score'] = d['score']
+        r['quality']['solr_score'] = d['score']
     if 'distance_km' in d:
         r['distance_km'] = d['distance_km']
-    # Start with empty return dict to be filled
-    # rtn = {}
-    # loop through all result fields and map if possible
-    # for k,v in d.items():
-    #     if not v or v == '':
-    #         continue
-    #     index = next((i for i, m in enumerate(mapping) if m.get("solr_field") == k), None)
-    #     if index is not None:
-    #         rtn[k] = _as_string(v)
-    #         #rtn[mapping[index]['output_name']] = _as_string(v)  translation disabled for now
-    #     else:
-    #         rtn[k] = _as_string(v)
     return r
 
 def _get_strategy_functions():
@@ -59,23 +55,6 @@ def _get_strategy_functions():
         "exact": _query_exact,
         "fuzzy": _query_fuzzy,
     }
-
-def _add_quality(d, args):
-    d['quality'] = {}
-    for arg in args:
-        if args[arg] and args[arg] != '':
-            d['quality'][arg] = math.ceil(Levenshtein.ratio(str(args[arg]).lower(), str(d[arg]).lower())*100)
-    return d
-
-def load_mapping():
-    mapping_raw = os.getenv("GEOCODER_DEFINITION")
-    # Parse mapping
-    try:
-        mapping = json.loads(mapping_raw) if mapping_raw else None
-    except Exception as e:
-        print("  JSON ERROR INSIDE load_mapping:", e)
-        return {}
-    return mapping
 
 def load_geocoder_config():
     params_raw = os.getenv("GEOCODER_PARAMS")
@@ -150,10 +129,6 @@ def _query_fuzzy(rows=5, **kwargs):
 def query_address(data: dict, rows: int = 5):
     params_cfg, strategies_cfg = load_geocoder_config()
 
-    # Fallback to existing hard-coded behaviour
-    if not params_cfg or not strategies_cfg:
-        return _query_address_static(data, rows)
-
     # Clean inputs dynamically
     cleaned = {p: _clean_str(data.get(p)) for p in params_cfg}
 
@@ -177,63 +152,11 @@ def query_address(data: dict, rows: int = 5):
         docs = res.get("response", {}).get("docs", [])
 
         if docs:
-            normalized = [_normalize_doc(d) for d in docs]
-            with_quality = [_add_quality(d, kwargs) for d in normalized]
-            return {"count": len(normalized), "results": with_quality, "strategy": name}
+            normalized = [_normalize_doc(d, kwargs) for d in docs]
+            return {"count": len(normalized), "results": normalized, "strategy": name}
             #return {"strategy": name, "results": normalized, "count": len(normalized)}
 
     return {"count": 0, "results": [],"strategy": None}
-    # return {"strategy": None, "results": [], "count": 0}
-
-
-def _query_address_static(data: dict, rows: int = 5):
-    """
-    Try geocoding with cascading strategies. Only execute if plz or ort provided.
-
-    Order:
-      1) All params exact
-      2) All params except hausnummer exact
-      3) All params fuzzy
-      4) All params except hausnummer fuzzy
-      5) Only ort + strasse fuzzy
-      6) Only plz + strasse fuzzy
-
-    Returns:
-      dict: {
-        "strategy": "<name>",
-        "results": [ ... up to rows ... ],
-        "count": <int>
-      }
-      or {} if no match.
-    """
-    plz        = _clean_str(data.get("plz"))
-    ort        = _clean_str(data.get("ort"))
-    strasse    = _clean_str(data.get("strasse"))
-    hausnummer = _clean_str(data.get("hausnummer"))
-
-    if not _have_plz_or_ort(plz, ort):
-        raise ValueError("Geocoding requires at least one of: plz or ort")
-
-    strategies = [
-        # name, callable, kwargs
-        ("exact_all",               _query_exact, {"plz": plz, "ort": ort, "strasse": strasse, "hausnummer": hausnummer}),
-        ("exact_no_hausnummer",     _query_exact, {"plz": plz, "ort": ort, "strasse": strasse, "hausnummer": None}),
-        ("fuzzy_all",               _query_fuzzy, {"plz": plz, "ort": ort, "strasse": strasse, "hausnummer": hausnummer}),
-        ("fuzzy_no_hausnummer",     _query_fuzzy, {"plz": plz, "ort": ort, "strasse": strasse, "hausnummer": None}),
-        ("fuzzy_ort_strasse",       _query_fuzzy, {"plz": None, "ort": ort, "strasse": strasse, "hausnummer": None}),
-        ("fuzzy_plz_strasse",       _query_fuzzy, {"plz": plz, "ort": None, "strasse": strasse, "hausnummer": None}),
-    ]
-
-    for name, func, kwargs in strategies:
-        res = func(rows=rows, **kwargs)
-        docs = res.get("response", {}).get("docs", [])
-        if docs:
-            normalized = [_normalize_doc(d) for d in docs]
-            return {"count": len(normalized), "results": normalized, "strategy": name}
-            # return {"strategy": name, "results": normalized, "count": len(normalized)}
-
-    # nothing found
-    return {"count": 0, "results": [], "strategy": None}
     # return {"strategy": None, "results": [], "count": 0}
 
 def _solr_select(params: dict):
