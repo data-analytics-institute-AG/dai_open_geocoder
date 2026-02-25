@@ -80,10 +80,10 @@ def load_geocoder_config(config_path="conf.json"):
         return params, strategies
 
     except json.JSONDecodeError as e:
-        print("JSON ERROR INSIDE load_geocoder_config:", e)
+        print("ERROR conf.json ist nicht vollständig oder korrekt befüllt:", e)
         return None, None
     except Exception as e:
-        print("ERROR INSIDE load_geocoder_config:", e)
+        print("ERROR conf.json ist nicht vollständig oder korrekt befüllt:", e)
         return None, None
 
 def _query_exact(rows=5, **kwargs):
