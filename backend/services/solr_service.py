@@ -56,24 +56,35 @@ def _get_strategy_functions():
         "fuzzy": _query_fuzzy,
     }
 
-def load_geocoder_config():
-    params_raw = os.getenv("GEOCODER_PARAMS")
-    strategies_raw = os.getenv("GEOCODER_STRATEGIES")
+def load_geocoder_config(config_path="conf.json"):
+    """
+    Loads geocoder configuration from a JSON file.
 
-    # Parse params
-    params = (
-        [p.strip() for p in params_raw.split(",") if p.strip()]
-        if params_raw else None
-    )
+    Expected structure:
+    {
+        "params": [...],
+        "strategies": {...}
+    }
+    """
 
-    # Parse strategies
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"Config file not found: {config_path}")
+
     try:
-        strategies = json.loads(strategies_raw) if strategies_raw else None
-    except Exception as e:
-        print("  JSON ERROR INSIDE load_geocoder_config:", e)
-        strategies = None
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
 
-    return params, strategies
+        params = config.get("params")
+        strategies = config.get("strategies")
+
+        return params, strategies
+
+    except json.JSONDecodeError as e:
+        print("JSON ERROR INSIDE load_geocoder_config:", e)
+        return None, None
+    except Exception as e:
+        print("ERROR INSIDE load_geocoder_config:", e)
+        return None, None
 
 def _query_exact(rows=5, **kwargs):
     """

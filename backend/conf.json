@@ -1,0 +1,24 @@
+{
+  "params":["plz","ort","ott","gemarkung","stn","hnr"],
+  "strategies":[
+    {"name":"exact_all","func":"exact","params":["plz","ort","stn","hnr"]},
+    {"name":"exact_all_ott","func":"exact","params":["plz","ott","stn","hnr"]},
+    {"name":"exact_all_gemarkung","func":"exact","params":["plz","gemarkung","stn","hnr"]},
+    {"name":"exact_ohne_plz","func":"exact","params":["ort","stn","hnr"]},
+    {"name":"exact_ohne_plz_ott","func":"exact","params":["ott","stn","hnr"]},
+    {"name":"exact_ohne_plz_gemarkung","func":"exact","params":["gemarkung","stn","hnr"]},
+    {"name":"exact_ohne_ort","func":"exact","params":["plz","stn","hnr"]},
+    {"name":"fuzzy_all_inkl_ott_gemarkung","func":"fuzzy","params":["plz","ort","ott","gemarkung","stn","hnr"]},
+    {"name":"fuzzy_all","func":"fuzzy","params":["plz","ort","stn","hnr"]},
+    {"name":"fuzzy_all_ott","func":"fuzzy","params":["plz","ott","stn","hnr"]},
+    {"name":"fuzzy_all_gemarkung","func":"fuzzy","params":["plz","gemarkung","stn","hnr"]},
+    {"name":"fuzzy_ohne_plz","func":"fuzzy","params":["ort","stn","hnr"]},
+    {"name":"fuzzy_ohne_plz_ott","func":"fuzzy","params":["ott","stn","hnr"]},
+    {"name":"fuzzy_ohne_plz_gemarkung","func":"fuzzy","params":["gemarkung","stn","hnr"]},
+    {"name":"fuzzy_ohne_ort","func":"fuzzy","params":["plz","stn","hnr"]},
+    {"name":"exact_ohne_hnr","func":"exact","params":["plz","ort","stn"]},
+    {"name":"fuzzy_ohne_hnr","func":"fuzzy","params":["plz","ort","stn"]},
+    {"name":"fuzzy_ort_strasse","func":"fuzzy","params":["ort","stn"]},
+    {"name":"fuzzy_plz_strasse","func":"fuzzy","params":["plz","stn"]}
+  ]
+}
