@@ -27,12 +27,13 @@ def _as_string(v):
 def _normalize_doc(d, args={}):
     """Return a consistent shape for API consumers."""
     r = {}
+    # TwoFold Way:
+    #   - either there is a defined json "additional_information" which has the results to publish in it
+    #   - or all fields are returned
     if 'additional_information' in d:
         values = json.loads(d['additional_information'])
         for k,v in values.items():
-            #if v and v != '':
-                r[k] = v
-        del d['additional_information']
+            r[k] = v
     else:
         r = d
     # Qualities auf den Eingangsparametern berechnen
@@ -97,17 +98,14 @@ def _query_exact(rows=5, **kwargs):
     """
     Solr exact query with scoring (edismax). Only non-None kwargs are used.
     """
-    # print(f"Parameter in _query_exact: {kwargs}")
     # Build "q" as ANDed exact matches
     # e.g., q = 'plz:"53111" AND ort:"Bonn"'
     q_parts = [f'{k}:"{v}"' for k, v in kwargs.items() if v is not None and v != '']
     q = " AND ".join(q_parts) if q_parts else "*:*"
-    #q = ", ".join(q_parts) if q_parts else "*:*"
 
     params = {
         "defType": "edismax",
         "q": q,
-        #"q.op":"AND",
         "rows": rows,
         "wt": "json",
         "fl": "*,score",
@@ -159,8 +157,6 @@ def query_address(data: dict, rows: int = 5):
         # Build kwargs dynamically
         kwargs = {p: cleaned.get(p) for p in params_cfg}
 
-        # print(f"Parameter in query_address: {kwargs}")
-
         # Remove parameters not listed in this strategy
         for p in params_cfg:
             if p not in strat["params"]:
@@ -172,10 +168,8 @@ def query_address(data: dict, rows: int = 5):
         if docs:
             normalized = [_normalize_doc(d, kwargs) for d in docs]
             return {"count": len(normalized), "results": normalized, "strategy": name}
-            #return {"strategy": name, "results": normalized, "count": len(normalized)}
 
     return {"count": 0, "results": [],"strategy": None}
-    # return {"strategy": None, "results": [], "count": 0}
 
 def _solr_select(params: dict):
     r = _session.get(_SELECT, params=params, timeout=_TIMEOUT)
@@ -215,7 +209,6 @@ def query_reverse(data: dict):
 
     lat = _coerce_float(data["lat"], "lat")
     lon = _coerce_float(data["lon"], "lon")
-    #max_results = _coerce_int(data.get("rows", 10), "rows")
     max_results = max(min(int(data.get("rows")), 10), 1)
     max_radius = float(data.get("max_radius", 1000.0))
 

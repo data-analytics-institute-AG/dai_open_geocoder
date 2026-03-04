@@ -8,10 +8,8 @@ def create_app():
     app = Flask(__name__)
     # disable JSON key sorting to preserve order
     app.json.sort_keys = False
-    
 
     #Swagger
-
     SWAGGER_URL = "/swagger"
     API_URL = "/static/swagger.json"
 

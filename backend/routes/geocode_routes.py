@@ -35,7 +35,6 @@ def geocode():
         address_result = query_address(raw_params, rows=rows)
         final_response = {"input": raw_params}
         final_response.update(address_result)
-        # result['input'] = raw_params
     except ValueError as e:
         return jsonify({"input":raw_params,"error": str(e)}), 400
 
