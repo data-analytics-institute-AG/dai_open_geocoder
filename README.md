@@ -52,16 +52,21 @@ Das Projekt hat zwei Komponenten:
 ### Klonen des repository
 
 ```bash
-git clone https://github.com/your-org/myproject.git
-cd myproject
+git clone https://github.com/data-analytics-institute-AG/dai_open_geocoder
+cd dai_open_geocoder
 ```
 
 ### Setzen der Umgebungsvariablen
 
 ```bash
-cp .env.example .env
-# Edit .env if needed
+nano backend/conf.json
+# Anpassen an die eigenen Bedürfnisse
 ```
+
+### Importieren der Daten in den SolrCore
+
+Das Ziel des Geokoders ist es möglichst flexibel zu sein und ohne Änderungen im Code mit jedem beliebigen Solr-Core zu arbeiten. Für die direkte Geokodierung gibt es daher keine Einschränkungen, mit welchen Feldern der Solr Core befüllt wird. Für die Reversegeokodierung ist es aber unbedingt erforderlich ein Feld "koordinate" vom Typ "location" zu haben. Die Daten müssen momentan in einem Core mit dem Namen "addresses" liegen. In einer zukünftigen Version des Geokoders ist es denkbar, dass dieser Name auch konfigurierbar gemacht wird.
+Die Feldnamen im SolrCore, die durchsuchbar sein sollen müssen identisch zu den durchsuchbaren Feldnamen in der conf.json sein.
 
 ### Starten der Applikation
 
@@ -76,7 +81,7 @@ Zu diesem Zweck sind Beispielskripte im Ordner helper_functions hinterlegt die g
 
 ### Erreichbarkeit der Applikationen
 
-- **Geokoder**: [https://localhost](https://localhost)
+- **Geokoder**: [https://localhost](http://localhost:5000)
 - **Solr Admin UI**: [http://localhost:8983/solr](http://localhost:8983/solr)
 
 Wenn die Anwendung produktive gestellt wird, sollte solr nicht exposed werden.
@@ -86,6 +91,10 @@ Wenn die Anwendung produktive gestellt wird, sollte solr nicht exposed werden.
 ```bash
 docker compose down
 ```
+
+### Reverseproxy / https
+
+In Produktion ist es empfehlenswert die Anwendung hinter einen ReverseProxy, wie z.B. einen NGinx zu legen. Es gibt online viele Beispiele, wie das direkt in einem docker compose Setup integriert werden kann. Daher wird dieses Thema nicht direkt in diesem Repo behandelt.
 
 ---
 
@@ -114,17 +123,13 @@ Die verwendeten Daten unterliegen unterschiedlicher [Lizenzen](https://github.co
 
 ### Umgebungsvariablen
 
-Der Geokoder ist konfigurierbar ohne den Code selbst ändern zu müssen. Dazu ist in der .env.example eine beispielhafte Konfiguration vorhanden. Die Konfiguration unterstützt momentan 3 Parameter:
+Der Geokoder ist konfigurierbar ohne den Code selbst ändern zu müssen. Dazu ist in der conf.json eine beispielhafte Konfiguration vorhanden. Die Konfiguration unterstützt momentan 2 Parameter:
 
-- GEOCODER_PARAMS: eine einfach kommaseparierte Liste von durchsuchbaren Parametern. Die Parameter müssen namentlich mit indizierten Feldern im Solr-Core übereinstimmen.
-- GEOCODER_STRATEGIES: Ein JSON, welches kontrolliert in welcher Reihenfolge welche Art von Anfragen gemacht werden. Dabei können die durchsuchten Felder und die Strategie (Exakt oder Fuzzy) festgelegt werden.
-- GEOCODER_DEFINITION: Konfiguration für die Übersetzung von technischen Namen aus solr in das json-Ergebnis.
+- params: eine einfach kommaseparierte Liste von durchsuchbaren Parametern. Die Parameter müssen namentlich mit indizierten Feldern im Solr-Core übereinstimmen.
+- strategies: Ein JSON, welches kontrolliert in welcher Reihenfolge welche Art von Anfragen gemacht werden. Dabei können die durchsuchten Felder und die Strategie (Exakt oder Fuzzy) festgelegt werden.
 
 ---
 
 ## Lizenz
 
 Das Projekt läuft unter der MIT Lizenz — siehe [LICENSE](LICENSE) für Details.
-
-
-
