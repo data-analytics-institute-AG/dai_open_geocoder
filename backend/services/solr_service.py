@@ -12,25 +12,32 @@ _SELECT = urljoin(SOLR_URL.rstrip("/") + "/", "select")
 _TIMEOUT = 6
 _session = requests.Session()
 
+# escapes special characters for solr and cleans up unnecessary whitespace
 def _clean_str(v):
+    if not v:
+        return v
+    SOLR_SPECIAL_CHARS = re.compile(r'(\+|-|&&|\|\||!|\(|\)|\{|\}|\[|\]|\^|"|~|\*|\?|:|\\|/)')
+    v = SOLR_SPECIAL_CHARS.sub(r'\\\1', v)
     return (v or "").strip()
 
 def _as_string(v):
     if v is None: return ""
     return v[0] if isinstance(v, list) else v
 
-def _normalize_doc(d, args):
+def _normalize_doc(d, args={}):
     """Return a consistent shape for API consumers."""
     r = {}
-    # TODO: if additional_information is not given, return all "normal" fields of solr
     if 'additional_information' in d:
         values = json.loads(d['additional_information'])
         for k,v in values.items():
             #if v and v != '':
                 r[k] = v
         del d['additional_information']
+    else:
+        r = d
     # Qualities auf den Eingangsparametern berechnen
-    r['quality'] = {}
+    if args:
+        r['quality'] = {}
     for arg in args:
         if args[arg] and args[arg] != '':
             if isinstance(d[arg], list):
