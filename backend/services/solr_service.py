@@ -7,8 +7,11 @@ import math
 from urllib.parse import urljoin
 
 
-SOLR_URL = os.getenv("SOLR_URL", "http://solr:8983/solr/addresses")
-_SELECT = urljoin(SOLR_URL.rstrip("/") + "/", "select")
+SOLR_URL = None
+COORDINATE_FIELD = None
+RESULT_FIELD = None
+LOADED_CONFIG = False
+_SELECT = None
 _TIMEOUT = 6
 _session = requests.Session()
 
@@ -28,10 +31,10 @@ def _normalize_doc(d, args={}):
     """Return a consistent shape for API consumers."""
     r = {}
     # TwoFold Way:
-    #   - either there is a defined json "additional_information" which has the results to publish in it
+    #   - either there is a defined json RESULT_FIELD - configurable in conf.json - which has the results to publish in it
     #   - or all fields are returned
-    if 'additional_information' in d:
-        values = json.loads(d['additional_information'])
+    if RESULT_FIELD and RESULT_FIELD in d:
+        values = json.loads(d[RESULT_FIELD])
         for k,v in values.items():
             r[k] = v
     else:
@@ -74,6 +77,10 @@ def load_geocoder_config(config_path="conf.json"):
         "strategies": {...}
     }
     """
+    global SOLR_URL
+    global COORDINATE_FIELD
+    global RESULT_FIELD
+    global _SELECT
 
     if not os.path.exists(config_path):
         raise FileNotFoundError(f"Config file not found: {config_path}")
@@ -84,6 +91,24 @@ def load_geocoder_config(config_path="conf.json"):
 
         params = config.get("params")
         strategies = config.get("strategies")
+        # Try reading solr url from config, use fallback if not present
+        try:
+            SOLR_URL = config.get("solr_url")
+        except:
+            SOLR_URL = "http://solr:8983/solr/addresses"
+        _SELECT = urljoin(SOLR_URL.rstrip("/") + "/", "select")
+
+        # Try reading coordinate field from config, if not present reverse geocode cannot be used
+        try:
+            COORDINATE_FIELD = config.get("coordinate_field")
+        except:
+            COORDINATE_FIELD = None
+
+        # Try reading result field from config, if not present whole document is returned
+        try:
+            RESULT_FIELD = config.get("result_field")
+        except:
+            RESULT_FIELD = None
 
         return params, strategies
 
@@ -143,7 +168,11 @@ def _query_fuzzy(rows=5, **kwargs):
     return _solr_select(params)
 
 def query_address(data: dict, rows: int = 5):
-    params_cfg, strategies_cfg = load_geocoder_config()
+    # makes sure config is only loaded once per instance
+    global LOADED_CONFIG
+    if not LOADED_CONFIG:
+        params_cfg, strategies_cfg = load_geocoder_config()
+        LOADED_CONFIG = True
 
     # Clean inputs dynamically
     cleaned = {p: _clean_str(data.get(p)) for p in params_cfg}
@@ -191,7 +220,8 @@ def _coerce_int(x, name):
 
 def query_reverse(data: dict):
     """
-    Reverse geocoding via Solr spatial search.
+    Reverse geocoding via Solr spatial search. Requires a coordinate_field configured in conf.json.
+    The coordinate field needs to be of type location
 
     Expected keys in `data`:
       - lat (required, float/str)
@@ -204,6 +234,14 @@ def query_reverse(data: dict):
                   Each item contains: id, plz, ort, strasse, hausnummer,
                   koordinate, distance_km, score
     """
+    # makes sure config is only loaded once per instance
+    global LOADED_CONFIG
+    if not LOADED_CONFIG:
+        params_cfg, strategies_cfg = load_geocoder_config()
+        LOADED_CONFIG = True
+    print(COORDINATE_FIELD)
+    if not COORDINATE_FIELD:
+        raise ValueError("Missing Configuration: 'coordinate_field' needs to be configured in conf.json")
     if "lat" not in data or "lon" not in data:
         raise ValueError("Missing coordinates: require 'lat' and 'lon'")
 
@@ -223,9 +261,9 @@ def query_reverse(data: dict):
         "rows": max_results,
         "wt": "json",
         "sort": "geodist() asc",
-        "sfield": "koordinate",
+        "sfield": COORDINATE_FIELD,
         "pt": f"{lat},{lon}",
-        "fq": f"{{!geofilt sfield=koordinate pt={lat},{lon} d={max_radius}}}",
+        "fq": f"{{!geofilt sfield={COORDINATE_FIELD} pt={lat},{lon} d={max_radius}}}",
         "fl": "*,distance_km:geodist()",
     }
 

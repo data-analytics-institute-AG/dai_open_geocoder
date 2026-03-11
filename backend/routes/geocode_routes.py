@@ -73,7 +73,10 @@ def reverse_geocode():
     if not maxDistance:
         maxDistance = 1
 
-    result = query_reverse({"lat": lat, "lon": lon, "rows": rows, "maxDistance": maxDistance})
+    try:
+        result = query_reverse({"lat": lat, "lon": lon, "rows": rows, "maxDistance": maxDistance})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     if result is None:
         return jsonify({"error": "No match found"}), 404
 
