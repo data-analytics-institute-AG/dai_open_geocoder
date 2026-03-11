@@ -169,10 +169,8 @@ def _query_fuzzy(rows=5, **kwargs):
 
 def query_address(data: dict, rows: int = 5):
     # makes sure config is only loaded once per instance
-    global LOADED_CONFIG
-    if not LOADED_CONFIG:
-        params_cfg, strategies_cfg = load_geocoder_config()
-        LOADED_CONFIG = True
+    params_cfg, strategies_cfg = load_geocoder_config()
+    LOADED_CONFIG = True
 
     # Clean inputs dynamically
     cleaned = {p: _clean_str(data.get(p)) for p in params_cfg}
@@ -295,7 +293,10 @@ def _dynamic_fuzzy(fieldname, token):
             continue
         l = len(word)
         if l <= 3:
-            fuzz = ""       # no fuzz
+            if word[0].isdigit():
+                fuzz = "~1"       # no fuzz
+            else:
+                fuzz = ""
         elif l <= 5:
             fuzz = "~1"
         else:
