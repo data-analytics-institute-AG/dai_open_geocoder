@@ -20,11 +20,10 @@ services:
     build: ./backend
     container_name: geocoder_web
     restart: unless-stopped
-    env_file: .env
     environment:
       FLASK_ENV: production
       PYTHONUNBUFFERED: 1 # easier debugging for development, should be 0 for PROD
-      SOLR_URL: http://geocoder_solr:8983/solr/addresses
+      OGC_CONFIG_FILE: "conf.json" # if you want to use a different conf file define it here
     ports:
       - "5000:5000"
     volumes:

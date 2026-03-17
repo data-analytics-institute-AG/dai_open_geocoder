@@ -64,7 +64,7 @@ def _get_strategy_functions():
         "fuzzy": _query_fuzzy,
     }
 
-def load_geocoder_config(config_path="conf.json"):
+def load_geocoder_config(config_path=os.environ.get('OGC_CONFIG_FILE', "conf.json")):
     """
     Loads geocoder configuration from a JSON file.
 
