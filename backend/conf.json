@@ -1,6 +1,7 @@
 {
   "solr_url":"http://solr:8983/solr/addresses",
   "coordinate_field":"koordinate",
+  "hnr_field":"hnr",
   "result_field":"additional_information",
   "params":["plz","ort","ott","gemarkung","stn","hnr"],
   "strategies":[

@@ -6,10 +6,7 @@ import Levenshtein
 import math
 from urllib.parse import urljoin
 
-
-SOLR_URL = None
-COORDINATE_FIELD = None
-RESULT_FIELD = None
+CONFIG = {}
 LOADED_CONFIG = False
 _SELECT = None
 _TIMEOUT = 6
@@ -33,8 +30,8 @@ def _normalize_doc(d, args={}):
     # TwoFold Way:
     #   - either there is a defined json RESULT_FIELD - configurable in conf.json - which has the results to publish in it
     #   - or all fields are returned
-    if RESULT_FIELD and RESULT_FIELD in d:
-        values = json.loads(d[RESULT_FIELD])
+    if CONFIG["result_field"] and CONFIG["result_field"] in d:
+        values = json.loads(d[CONFIG["result_field"]])
         for k,v in values.items():
             r[k] = v
     else:
@@ -77,9 +74,7 @@ def load_geocoder_config(config_path="conf.json"):
         "strategies": {...}
     }
     """
-    global SOLR_URL
-    global COORDINATE_FIELD
-    global RESULT_FIELD
+    global CONFIG
     global _SELECT
 
     if not os.path.exists(config_path):
@@ -89,35 +84,23 @@ def load_geocoder_config(config_path="conf.json"):
         with open(config_path, "r", encoding="utf-8") as f:
             config = json.load(f)
 
-        params = config.get("params")
-        strategies = config.get("strategies")
-        # Try reading solr url from config, use fallback if not present
-        try:
-            SOLR_URL = config.get("solr_url")
-        except:
-            SOLR_URL = "http://solr:8983/solr/addresses"
-        _SELECT = urljoin(SOLR_URL.rstrip("/") + "/", "select")
+        CONFIG = config
+        print(CONFIG)
 
-        # Try reading coordinate field from config, if not present reverse geocode cannot be used
-        try:
-            COORDINATE_FIELD = config.get("coordinate_field")
-        except:
-            COORDINATE_FIELD = None
+        # Solr URL should be defined. use a default as fallback if not
+        if not CONFIG["solr_url"]:
+            CONFIG["solr_url"] = "http://solr:8983/solr/addresses"
+        _SELECT = urljoin(CONFIG["solr_url"].rstrip("/") + "/", "select")
 
-        # Try reading result field from config, if not present whole document is returned
-        try:
-            RESULT_FIELD = config.get("result_field")
-        except:
-            RESULT_FIELD = None
-
-        return params, strategies
+        # params and strategies must be set. if not throw an error
+        if not CONFIG["params"] or not CONFIG["strategies"]:
+            print("ERROR conf.json ist nicht vollständig oder korrekt befüllt. 'params' und 'strategies' must be set.", e)
+            return None, None
 
     except json.JSONDecodeError as e:
         print("ERROR conf.json ist nicht vollständig oder korrekt befüllt:", e)
-        return None, None
     except Exception as e:
         print("ERROR conf.json ist nicht vollständig oder korrekt befüllt:", e)
-        return None, None
 
 def _query_exact(rows=5, **kwargs):
     """
@@ -168,9 +151,13 @@ def _query_fuzzy(rows=5, **kwargs):
     return _solr_select(params)
 
 def query_address(data: dict, rows: int = 5):
+    global LOADED_CONFIG
     # makes sure config is only loaded once per instance
-    params_cfg, strategies_cfg = load_geocoder_config()
-    LOADED_CONFIG = True
+    if not LOADED_CONFIG:
+        load_geocoder_config()
+        LOADED_CONFIG = True
+    params_cfg = CONFIG["params"]
+    strategies_cfg = CONFIG["strategies"]
 
     # Clean inputs dynamically
     cleaned = {p: _clean_str(data.get(p)) for p in params_cfg}
@@ -235,10 +222,9 @@ def query_reverse(data: dict):
     # makes sure config is only loaded once per instance
     global LOADED_CONFIG
     if not LOADED_CONFIG:
-        params_cfg, strategies_cfg = load_geocoder_config()
+        load_geocoder_config()
         LOADED_CONFIG = True
-    print(COORDINATE_FIELD)
-    if not COORDINATE_FIELD:
+    if not CONFIG["coordinate_field"]:
         raise ValueError("Missing Configuration: 'coordinate_field' needs to be configured in conf.json")
     if "lat" not in data or "lon" not in data:
         raise ValueError("Missing coordinates: require 'lat' and 'lon'")
