@@ -101,25 +101,6 @@ def load_geocoder_config(config_path="conf.json"):
     except Exception as e:
         print("ERROR conf.json ist nicht vollständig oder korrekt befüllt:", e)
 
-def _query_exact_old(rows=5, **kwargs):
-    """
-    Solr exact query with scoring (edismax). Only non-None kwargs are used.
-    """
-    # Build "q" as ANDed exact matches
-    # e.g., q = 'plz:"53111" AND ort:"Bonn"'
-    q_parts = [f'{k}:"{v}"' for k, v in kwargs.items() if v is not None and v != '']
-    q = " AND ".join(q_parts) if q_parts else "*:*"
-
-    params = {
-        "defType": "edismax",
-        "q": q,
-        "rows": rows,
-        "wt": "json",
-        "fl": "*,score",
-    }
-
-    return _solr_select(params)
-
 def _query_exact(rows=5, **kwargs):
     """
     Solr exact query with scoring (edismax). Only non-None kwargs are used.
@@ -140,7 +121,6 @@ def _query_exact(rows=5, **kwargs):
     housenumber_numeric_field = (
         f"{housenumber_field}_numeric" if housenumber_field else None
     )
-    print(kwargs)
 
     # Handle housenumber special case once
     if housenumber_field:
@@ -181,12 +161,46 @@ def _query_fuzzy(rows=5, **kwargs):
     Dynamic fuzzy Solr query without field boosts.
 
     kwargs: arbitrary field=value pairs, e.g.
-        plz="53111", ort="Bonn", strasse="Hauptstrasse", hausnummer="5"
+        plz="53111", ort="Bonn", strasse="Hauptstrasse", hnr="5", hnr_numeric="5"
 
-    Only non-None fields are queried. Each field uses _dynamic_fuzzy().
+    Only non-None / non-empty fields are queried. Each normal field uses
+    _dynamic_fuzzy().
+
+    Special handling:
+    If CONF["housenumber_field"] is set, and kwargs contains:
+      - that field name (e.g. "hnr")
+      - "<field>_numeric" (e.g. "hnr_numeric")
+    then they are combined as:
+      (_dynamic_fuzzy(hnr, value) OR _dynamic_fuzzy(hnr, numeric_value))
     """
-    # Build query parts for non-None fields
-    parts = [_dynamic_fuzzy(k, v) for k, v in kwargs.items() if v is not None and v != '']
+    parts = []
+
+    housenumber_field = CONFIG.get("housenumber_field")
+    housenumber_numeric_field = (
+        f"{housenumber_field}_numeric" if housenumber_field else None
+    )
+
+    # Special handling for housenumber + housenumber_numeric
+    if housenumber_field:
+        hnr = kwargs.get(housenumber_field)
+        hnr_numeric = kwargs.get(housenumber_numeric_field)
+
+        hnr_parts = []
+        if hnr is not None and hnr != "":
+            hnr_parts.append(_dynamic_fuzzy(housenumber_field, hnr))
+        if hnr_numeric is not None and hnr_numeric != "":
+            hnr_parts.append(_dynamic_fuzzy(housenumber_field, hnr_numeric))
+
+        if hnr_parts:
+            parts.append(f"({' OR '.join(hnr_parts)})")
+
+    # All other fields remain unchanged
+    for k, v in kwargs.items():
+        if v is None or v == "":
+            continue
+        if k == housenumber_field or k == housenumber_numeric_field:
+            continue
+        parts.append(_dynamic_fuzzy(k, v))
 
     # Fallback to match all if nothing provided
     q = " AND ".join(parts) if parts else "*:*"
@@ -229,7 +243,6 @@ def query_address(data: dict, rows: int = 5):
             cleaned[new_hnr_key] = str(match.group())
         else:
             cleaned[new_hnr_key] = None
-        print("hellengarten: " + str(cleaned))
 
     func_map = _get_strategy_functions()
 
@@ -238,7 +251,6 @@ def query_address(data: dict, rows: int = 5):
         func = func_map[strat["func"]]
 
         # Build kwargs dynamically
-        #kwargs = {p: cleaned.get(p) for p in params_cfg}
         kwargs = cleaned
 
         # Remove parameters not listed in this strategy
