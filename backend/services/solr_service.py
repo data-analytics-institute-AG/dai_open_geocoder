@@ -40,7 +40,7 @@ def _normalize_doc(d, args={}):
     if args:
         r['quality'] = {}
     for arg in args:
-        if args[arg] and args[arg] != '':
+        if args[arg] and args[arg] != '' and arg in d:
             if isinstance(d[arg], list):
             # loop through the options and return best match
                 bestQuality = 0
@@ -85,7 +85,6 @@ def load_geocoder_config(config_path="conf.json"):
             config = json.load(f)
 
         CONFIG = config
-        print(CONFIG)
 
         # Solr URL should be defined. use a default as fallback if not
         if not CONFIG["solr_url"]:
@@ -102,13 +101,69 @@ def load_geocoder_config(config_path="conf.json"):
     except Exception as e:
         print("ERROR conf.json ist nicht vollständig oder korrekt befüllt:", e)
 
-def _query_exact(rows=5, **kwargs):
+def _query_exact_old(rows=5, **kwargs):
     """
     Solr exact query with scoring (edismax). Only non-None kwargs are used.
     """
     # Build "q" as ANDed exact matches
     # e.g., q = 'plz:"53111" AND ort:"Bonn"'
     q_parts = [f'{k}:"{v}"' for k, v in kwargs.items() if v is not None and v != '']
+    q = " AND ".join(q_parts) if q_parts else "*:*"
+
+    params = {
+        "defType": "edismax",
+        "q": q,
+        "rows": rows,
+        "wt": "json",
+        "fl": "*,score",
+    }
+
+    return _solr_select(params)
+
+def _query_exact(rows=5, **kwargs):
+    """
+    Solr exact query with scoring (edismax). Only non-None kwargs are used.
+
+    Special handling:
+    If CONF["housenumber_field"] is set, and kwargs contains:
+      - that field name (e.g. "hnr")
+      - "<field>_numeric" (e.g. "hnr_numeric")
+    then they are combined as:
+      (housenumber:hnr OR housenumber:hnr_numeric)
+
+    All other fields remain exact matches:
+      field:"value"
+    """
+    q_parts = []
+
+    housenumber_field = CONFIG.get("housenumber_field")
+    housenumber_numeric_field = (
+        f"{housenumber_field}_numeric" if housenumber_field else None
+    )
+    print(kwargs)
+
+    # Handle housenumber special case once
+    if housenumber_field:
+        hnr = kwargs.get(housenumber_field)
+        hnr_numeric = kwargs.get(housenumber_numeric_field)
+
+        hnr_parts = []
+        if hnr is not None and hnr != "":
+            hnr_parts.append(f'{housenumber_field}:"{hnr}"')
+        if hnr_numeric is not None and hnr_numeric != "":
+            hnr_parts.append(f'{housenumber_field}:"{hnr_numeric}"')
+
+        if hnr_parts:
+            q_parts.append(f"({' OR '.join(hnr_parts)})")
+
+    # Handle all remaining fields normally
+    for k, v in kwargs.items():
+        if v is None or v == "":
+            continue
+        if k == housenumber_field or k == housenumber_numeric_field:
+            continue
+        q_parts.append(f'{k}:"{v}"')
+
     q = " AND ".join(q_parts) if q_parts else "*:*"
 
     params = {
@@ -162,6 +217,20 @@ def query_address(data: dict, rows: int = 5):
     # Clean inputs dynamically
     cleaned = {p: _clean_str(data.get(p)) for p in params_cfg}
 
+    # special handling: housenumber if we have a housenumber field defined:
+    # housenumbers are kept in two variations:
+    # 1.: original housenumber (CONFIG["housenumber_field"])
+    # 2.: housenumber without suffix (CONFIG["housenumber_field"]_numeric)
+    # the solr is then called with (hnr:1 OR hnr:2). This should increase the quality when matching housenumbers
+    if cleaned[CONFIG["housenumber_field"]]:
+        new_hnr_key = str(CONFIG["housenumber_field"]) + "_numeric"
+        match = re.match(r"\d+", cleaned[CONFIG["housenumber_field"]].strip())
+        if match:
+            cleaned[new_hnr_key] = str(match.group())
+        else:
+            cleaned[new_hnr_key] = None
+        print("hellengarten: " + str(cleaned))
+
     func_map = _get_strategy_functions()
 
     for strat in strategies_cfg:
@@ -169,7 +238,8 @@ def query_address(data: dict, rows: int = 5):
         func = func_map[strat["func"]]
 
         # Build kwargs dynamically
-        kwargs = {p: cleaned.get(p) for p in params_cfg}
+        #kwargs = {p: cleaned.get(p) for p in params_cfg}
+        kwargs = cleaned
 
         # Remove parameters not listed in this strategy
         for p in params_cfg:
@@ -279,10 +349,7 @@ def _dynamic_fuzzy(fieldname, token):
             continue
         l = len(word)
         if l <= 3:
-            if word[0].isdigit():
-                fuzz = "~1"       # no fuzz
-            else:
-                fuzz = ""
+            fuzz = ""
         elif l <= 5:
             fuzz = "~1"
         else:
