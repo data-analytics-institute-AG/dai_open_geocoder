@@ -1,4 +1,19 @@
 services:
+
+  # new solr including initializing core
+  solr-addresses:
+    image: solr:10.0.0
+    container_name: solr-addresses
+    ports:
+      - "8984:8983"
+    volumes:
+      - ./solr-data:/var/solr
+      - ./solr_test/configsets/addresses:/opt/solr/server/solr/configsets/addresses:ro
+    command:
+      - solr-precreate
+      - addresses
+      - /opt/solr/server/solr/configsets/addresses
+
   # --- Apache Solr (Address Index) ---
   solr:
     image: solr:9

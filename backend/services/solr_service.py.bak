@@ -50,9 +50,9 @@ def _query_exact(rows=5, **kwargs):
     Special handling:
     If CONF["housenumber_field"] is set, and kwargs contains:
       - that field name (e.g. "hnr")
-      - "<field>_int" (e.g. "hnr_int")
+      - "<field>_numeric" (e.g. "hnr_numeric")
     then they are combined as:
-      (housenumber:hnr OR housenumber:hnr_int)
+      (housenumber:hnr OR housenumber:hnr_numeric)
 
     All other fields remain exact matches:
       field:"value"
@@ -60,20 +60,20 @@ def _query_exact(rows=5, **kwargs):
     q_parts = []
 
     housenumber_field = CONFIG.get("housenumber_field")
-    housenumber_int_field = (
-        f"{housenumber_field}_int" if housenumber_field else None
+    housenumber_numeric_field = (
+        f"{housenumber_field}_numeric" if housenumber_field else None
     )
 
     # Handle housenumber special case once
     if housenumber_field:
         hnr = kwargs.get(housenumber_field)
-        hnr_int = kwargs.get(housenumber_int_field)
+        hnr_numeric = kwargs.get(housenumber_numeric_field)
 
         hnr_parts = []
         if hnr is not None and hnr != "":
             hnr_parts.append(f'{housenumber_field}:"{hnr}"')
-        if hnr_int is not None and hnr_int != "":
-            hnr_parts.append(f'{housenumber_field}:"{hnr_int}"')
+        if hnr_numeric is not None and hnr_numeric != "":
+            hnr_parts.append(f'{housenumber_field}:"{hnr_numeric}"')
 
         if hnr_parts:
             q_parts.append(f"({' OR '.join(hnr_parts)})")
@@ -82,7 +82,7 @@ def _query_exact(rows=5, **kwargs):
     for k, v in kwargs.items():
         if v is None or v == "":
             continue
-        if k == housenumber_field or k == housenumber_int_field:
+        if k == housenumber_field or k == housenumber_numeric_field:
             continue
         q_parts.append(f'{k}:"{v}"')
 
@@ -100,69 +100,63 @@ def _query_exact(rows=5, **kwargs):
 
 def _query_fuzzy(rows=5, **kwargs):
     """
-    Dynamic fuzzy Solr query.
+    Dynamic fuzzy Solr query without field boosts.
+
+    kwargs: arbitrary field=value pairs, e.g.
+        plz="53111", ort="Bonn", strasse="Hauptstrasse", hnr="5", hnr_numeric="5"
+
+    Only non-None / non-empty fields are queried. Each normal field uses
+    _dynamic_fuzzy().
+
+    Special handling:
+    If CONF["housenumber_field"] is set, and kwargs contains:
+      - that field name (e.g. "hnr")
+      - "<field>_numeric" (e.g. "hnr_numeric")
+    then they are combined as:
+      (_dynamic_fuzzy(hnr, value) OR _dynamic_fuzzy(hnr, numeric_value))
     """
-    configured_fields = set(CONFIG.get("params", []))
-    fuzzy_field_map = CONFIG.get("params_fuzzy") or {}
-
-    housenumber_field = CONFIG.get("housenumber_field")
-    housenumber_int_field = (
-        f"{housenumber_field}_int" if housenumber_field else None
-    )
-
     parts = []
 
-    hnr_clause = _build_housenumber_fuzzy_clause(
-        kwargs=kwargs,
-        housenumber_field=housenumber_field,
-        housenumber_int_field=housenumber_int_field,
+    housenumber_field = CONFIG.get("housenumber_field")
+    housenumber_numeric_field = (
+        f"{housenumber_field}_numeric" if housenumber_field else None
     )
 
-    if hnr_clause:
-        parts.append(hnr_clause)
+    # Special handling for housenumber + housenumber_numeric
+    if housenumber_field:
+        hnr = kwargs.get(housenumber_field)
+        hnr_numeric = kwargs.get(housenumber_numeric_field)
 
-    for fieldname, value in kwargs.items():
-        if _is_empty(value):
+        hnr_parts = []
+        if hnr is not None and hnr != "":
+            hnr_parts.append(_dynamic_fuzzy(housenumber_field, hnr))
+        if hnr_numeric is not None and hnr_numeric != "":
+            hnr_parts.append(_dynamic_fuzzy(housenumber_field, hnr_numeric))
+
+        if hnr_parts:
+            parts.append(f"({' OR '.join(hnr_parts)})")
+
+    # All other fields remain unchanged
+    for k, v in kwargs.items():
+        if v is None or v == "":
             continue
-
-        if fieldname in {housenumber_field, housenumber_int_field}:
+        if k == housenumber_field or k == housenumber_numeric_field:
             continue
+        parts.append(_dynamic_fuzzy(k, v))
 
-        if fieldname not in configured_fields:
-            continue
-
-        solr_fieldname = fuzzy_field_map.get(fieldname, fieldname)
-
-        clause = _dynamic_fuzzy(
-            fieldname=solr_fieldname,
-            token=value,
-            use_multiword_variants=fieldname in fuzzy_field_map,
-        )
-
-        if clause:
-            parts.append(clause)
-
+    # Fallback to match all if nothing provided
     q = " AND ".join(parts) if parts else "*:*"
 
     params = {
         "q": q,
+        "ps": 2,
+        "mm": "2<75%",
+        "tie": "0.1",
         "sow": "true",
         "rows": rows,
         "wt": "json",
         "fl": "*,score",
     }
-
-    # Two-tier ranking:
-    # 1. Solr score descending
-    # 2. For equal scores, closest int house number ascending
-    if housenumber_field and housenumber_int_field:
-        queried_hnr = kwargs.get(housenumber_field)
-        queried_hnr_int = _extract_first_int(queried_hnr)
-
-        if queried_hnr_int is not None:
-            distance_expr = f"dist(1,{housenumber_int_field},{queried_hnr_int})"
-
-        params["sort"] = f"score desc, {distance_expr} asc"
 
     print("DEBUG: solr-Parameter:", params)
     return _solr_select(params)
@@ -182,10 +176,10 @@ def query_address(data: dict, rows: int = 5):
     # special handling: housenumber if we have a housenumber field defined:
     # housenumbers are kept in two variations:
     # 1.: original housenumber (CONFIG["housenumber_field"])
-    # 2.: housenumber without suffix (CONFIG["housenumber_field"]_int)
+    # 2.: housenumber without suffix (CONFIG["housenumber_field"]_numeric)
     # the solr is then called with (hnr:1 OR hnr:2). This should increase the quality when matching housenumbers
     if cleaned[CONFIG["housenumber_field"]]:
-        new_hnr_key = str(CONFIG["housenumber_field"]) + "_int"
+        new_hnr_key = str(CONFIG["housenumber_field"]) + "_numeric"
         match = re.match(r"^\d+", cleaned[CONFIG["housenumber_field"]].strip())
         if match:
             cleaned[new_hnr_key] = str(match.group())
@@ -201,15 +195,11 @@ def query_address(data: dict, rows: int = 5):
         # Build kwargs dynamically
         kwargs = cleaned.copy()
 
-        # check if all parameters of strat are set: if not, do not use this strat
-        if not all(p in kwargs for p in strat['params']):
-            continue
-
         # Remove parameters not listed in this strategy
         for p in params_cfg:
             if p not in strat["params"]:
                 if p == CONFIG["housenumber_field"]:
-                    kwargs[str(CONFIG["housenumber_field"]) + "_int"] = None
+                    kwargs[str(CONFIG["housenumber_field"]) + "_numeric"] = None
                 kwargs[p] = None
 
         res = func(rows=rows, **kwargs)
@@ -279,95 +269,57 @@ def query_reverse(data: dict):
 
     return None
 
-def _build_housenumber_fuzzy_clause(
-    kwargs,
-    housenumber_field,
-    housenumber_int_field,
-):
-    if not housenumber_field:
-        return None
-
-    parts = []
-
-    hnr = kwargs.get(housenumber_field)
-    hnr_int = kwargs.get(housenumber_int_field)
-
-    if not _is_empty(hnr):
-        parts.append(
-            _dynamic_fuzzy(
-                fieldname=housenumber_field,
-                token=hnr,
-                use_multiword_variants=False,
-            )
-        )
-
-    if not _is_empty(hnr_int):
-        parts.append(
-            _dynamic_fuzzy(
-                fieldname=housenumber_field,
-                token=hnr_int,
-                use_multiword_variants=False,
-            )
-        )
-
-    parts = [part for part in parts if part]
-
-    if not parts:
-        return None
-
-    if len(parts) == 1:
-        return parts[0]
-
-    return f"({' OR '.join(parts)})"
-
-
-def _dynamic_fuzzy(fieldname, token, use_multiword_variants=False):
+def _dynamic_fuzzy(fieldname, token):
     """
-    Returns a Solr query with fuzziness per word.
-
-    Multi-word tokens are split on whitespace, '-', '+', and '.'.
-
-    If use_multiword_variants=True, this returns:
-        (
-          field:"original token"^10
-          OR (field:word1~1 AND field:word2~2)
-          OR field:word1word2~2
-        )
-
-    Otherwise:
-        field:word1~1 AND field:word2~2
+    Returns Solr query with fuzziness per token (word).
+    Multi-word tokens are split on whitespace, '-' and '+'.
     """
     token = str(token).strip()
-
     if not token:
         return ""
 
-    words = _split_fuzzy_words(token)
+    # split on whitespace, '-' or '+'
+    words = re.split(r'[\s\-\+\.]+', token.replace('\\', ''))
 
-    if not words:
-        return ""
+    parts = []
+    for word in words:
+        if not word:
+            continue
+        # l = len(word)
+        # if l <= 1:
+        #     fuzz = ""
+        # elif l <= 5:
+        #     fuzz = "~1"
+        # elif l <= 10:
+        #     fuzz = "~2"
+        # elif l <= 20:
+        #     fuzz = "~3"
+        # else:
+        #     fuzz = "~4"
+        fuzz = _fuzzy_length(word)
+        parts.append(f"{fieldname}:{word}{fuzz}")
 
-    word_parts = [
-        f"{fieldname}:{word}{_fuzzy_length(word)}"
-        for word in words
-    ]
+    # join with AND to preserve all words
+    if fieldname == 'stn' or fieldname == 'ort' or fieldname == 'ott' or fieldname == 'gemarkung':
+        allwords = re.sub(r'[\s\-\+\.]+', '', token.replace('\\', ''))
+        fuzz = _fuzzy_length(allwords)
+        return f"({fieldname}:\"" + token + "\"^10 OR (" + " AND ".join(parts) + ") OR " + f"{fieldname}:{allwords}{fuzz}" + ")"
+    else:
+        return " AND ".join(parts)
 
-    word_query = " AND ".join(word_parts)
-
-    if not use_multiword_variants:
-        return word_query
-
-    allwords = _compact_fuzzy_token(token)
-
-    variants = [
-        f'{fieldname}:"{token}"^10',
-        f"({word_query})",
-    ]
-
-    if allwords and allwords not in words:
-        variants.append(f"{fieldname}:{allwords}{_fuzzy_length(allwords)}")
-
-    return f"({' OR '.join(variants)})"
+def _fuzzy_length(word):
+    l = len(word)
+    if l <= 1:
+        fuzz = ""
+    elif l <= 5:
+        fuzz = "~1"
+    elif l <= 10:
+        fuzz = "~2"
+    elif l <= 20:
+        fuzz = "~3"
+    else:
+        fuzz = "~4"
+    return fuzz
 
 def _normalize_doc(d, args={}):
     """Return a consistent shape for API consumers."""
@@ -405,46 +357,9 @@ def _normalize_doc(d, args={}):
 
 def _solr_select(params: dict):
     r = _session.get(_SELECT, params=params, timeout=_TIMEOUT)
-
-    if not r.ok:
-        print("SOLR ERROR STATUS:", r.status_code)
-        print("SOLR ERROR BODY:", r.text)
-        r.raise_for_status()
-
+    # print("DEBUG: Solr URL called:", r.request.url)
+    r.raise_for_status()
     return r.json()
-
-###################### HELPER FUNCTIONS ####################################
-
-def _split_fuzzy_words(token):
-    token = str(token).replace("\\", "")
-    return [
-        word
-        for word in re.split(r"[\s\-\+\.]+", token)
-        if word
-    ]
-
-
-def _compact_fuzzy_token(token):
-    token = str(token).replace("\\", "")
-    return re.sub(r"[\s\-\+\.]+", "", token)
-
-
-def _fuzzy_length(word):
-    """
-    Solr/Lucene fuzzy edit distance is max 2.
-    """
-    length = len(word)
-
-    if length <= 1:
-        return ""
-
-    if length <= 5:
-        return "~1"
-
-    return "~2"
-
-def _is_empty(value):
-    return value is None or value == ""
 
 def _coerce_float(x, name):
     try:
@@ -475,16 +390,3 @@ def _clean_str(v):
 def _as_string(v):
     if v is None: return ""
     return v[0] if isinstance(v, list) else v
-
-def _extract_first_int(value):
-    """
-    Extract the first integer from a house-number-like value.
-    """
-    if _is_empty(value):
-        return None
-
-    match = re.search(r"\d+", str(value))
-    if not match:
-        return None
-
-    return int(match.group(0))

@@ -6,3 +6,4 @@ __pycache__/
 solr/data/
 solr/logs/
 helper_functions/
+solr_data/*

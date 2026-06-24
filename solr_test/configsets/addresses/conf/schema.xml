@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<schema name="addresses" version="1.6">
+
+  <uniqueKey>id</uniqueKey>
+
+  <fieldType name="string" class="solr.StrField" sortMissingLast="true" />
+  <fieldType name="long" class="solr.LongPointField" />
+  <fieldType name="integer" class="solr.IntPointField" />
+  <fieldType name="location" class="solr.LatLonPointSpatialField" docValues="true" />
+
+  <fieldType name="text_general" class="solr.TextField" positionIncrementGap="100">
+    <analyzer type="index">
+      <tokenizer class="solr.StandardTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
+    <analyzer type="query">
+      <tokenizer class="solr.StandardTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
+  </fieldType>
+
+  <field name="_text_" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <field name="_version_" type="long" indexed="true" stored="true"/>
+
+  <field name="additional_information" type="string" multiValued="false" indexed="false" stored="true"/>
+  <field name="commit" type="text_general"/>
+  <field name="daid" type="text_general" multiValued="false" indexed="true" stored="true"/>
+  <field name="delete" type="text_general"/>
+
+  <field name="gemarkung" type="string" multiValued="true" indexed="true" stored="true"/>
+  <field name="gemarkung_fuzzy" type="text_general" multiValued="true" indexed="true" stored="true"/>
+
+  <field name="hnr_int" type="integer" multiValued="false" indexed="true" stored="true"/>
+  <field name="hnr" type="text_general" multiValued="true" indexed="true" stored="true"/>
+
+  <field name="id" type="string" multiValued="false" indexed="true" required="true" stored="true"/>
+
+  <field name="koordinate" type="location" multiValued="false" indexed="true" stored="true"/>
+
+  <field name="ort" type="string" multiValued="true" indexed="true" stored="true"/>
+  <field name="ort_fuzzy" type="text_general" multiValued="true" indexed="true" stored="true"/>
+
+  <field name="ott" type="string" multiValued="true" indexed="true" stored="true"/>
+  <field name="ott_fuzzy" type="text_general" multiValued="true" indexed="true" stored="true"/>
+
+  <field name="plz" type="string" multiValued="false" indexed="true" stored="true"/>
+
+  <field name="stn" type="string" multiValued="true" indexed="true" stored="true"/>
+  <field name="stn_fuzzy" type="text_general" multiValued="true" indexed="true" stored="true"/>
+
+</schema>

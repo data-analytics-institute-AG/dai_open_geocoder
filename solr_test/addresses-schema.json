@@ -1,0 +1,132 @@
+{
+  "replace-field": [
+    {
+      "name": "_text_",
+      "type": "text_general",
+      "indexed": true,
+      "stored": false
+    },
+    {
+      "name": "_version_",
+      "type": "long",
+      "indexed": true,
+      "stored": true
+    },
+    {
+      "name": "id",
+      "type": "string",
+      "multiValued": false,
+      "indexed": true,
+      "required": true,
+      "stored": true
+    }
+  ],
+  "add-field": [
+    {
+      "name": "additional_information",
+      "type": "string",
+      "multiValued": false,
+      "indexed": false,
+      "stored": true
+    },
+    {
+      "name": "commit",
+      "type": "text_general"
+    },
+    {
+      "name": "daid",
+      "type": "text_general",
+      "multiValued": false,
+      "indexed": true,
+      "stored": true
+    },
+    {
+      "name": "delete",
+      "type": "text_general"
+    },
+    {
+      "name": "gemarkung",
+      "type": "string",
+      "multiValued": true,
+      "indexed": true,
+      "stored": true
+    },
+    {
+      "name": "gemarkung_fuzzy",
+      "type": "text_general",
+      "multiValued": true,
+      "indexed": true,
+      "stored": true
+    },
+    {
+      "name": "hnr_int",
+      "type": "integer",
+      "multiValued": true,
+      "indexed": true,
+      "stored": true
+    },
+    {
+      "name": "hnr",
+      "type": "text_general",
+      "multiValued": true,
+      "indexed": true,
+      "stored": true
+    },
+    {
+      "name": "koordinate",
+      "type": "location",
+      "multiValued": false,
+      "indexed": true,
+      "stored": true
+    },
+    {
+      "name": "ort",
+      "type": "string",
+      "multiValued": true,
+      "indexed": true,
+      "stored": true
+    },
+    {
+      "name": "ort_fuzzy",
+      "type": "text_general",
+      "multiValued": true,
+      "indexed": true,
+      "stored": true
+    },
+    {
+      "name": "ott",
+      "type": "string",
+      "multiValued": true,
+      "indexed": true,
+      "stored": true
+    },
+    {
+      "name": "ott_fuzzy",
+      "type": "text_general",
+      "multiValued": true,
+      "indexed": true,
+      "stored": true
+    },
+    {
+      "name": "plz",
+      "type": "string",
+      "multiValued": false,
+      "indexed": true,
+      "stored": true
+    },
+    {
+      "name": "stn",
+      "type": "string",
+      "multiValued": true,
+      "indexed": true,
+      "stored": true
+    },
+    {
+      "name": "stn_fuzzy",
+      "type": "text_general",
+      "multiValued": true,
+      "indexed": true,
+      "stored": true
+    }
+  ]
+}

@@ -1,9 +1,10 @@
 {
-  "solr_url":"http://solr:8983/solr/addresses",
+  "solr_url":"http://10.10.0.4:8984/solr/addresses",
   "coordinate_field":"koordinate",
   "housenumber_field":"hnr",
   "result_field":"additional_information",
   "params":["plz","ort","ott","gemarkung","stn","hnr"],
+  "params_fuzzy":{"ort":"ort_fuzzy","ott":"ott_fuzzy","gemarkung":"gemarkung_fuzzy","stn":"stn_fuzzy"},
   "strategies":[
     {"name":"exact_all","func":"exact","params":["plz","ort","stn","hnr"]},
     {"name":"exact_all_ott","func":"exact","params":["plz","ott","stn","hnr"]},
