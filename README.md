@@ -123,10 +123,16 @@ Die verwendeten Daten unterliegen unterschiedlicher [Lizenzen](https://github.co
 
 ### Umgebungsvariablen
 
-Der Geokoder ist konfigurierbar ohne den Code selbst ändern zu müssen. Dazu ist in der conf.json eine beispielhafte Konfiguration vorhanden. Die Konfiguration unterstützt momentan 2 Parameter:
+Der Geokoder ist konfigurierbar ohne den Code selbst ändern zu müssen. Dazu ist in der conf.json eine beispielhafte Konfiguration vorhanden. Die Konfiguration unterstützt die folgenden Parameter:
 
-- params: eine einfach kommaseparierte Liste von durchsuchbaren Parametern. Die Parameter müssen namentlich mit indizierten Feldern im Solr-Core übereinstimmen.
-- strategies: Ein JSON, welches kontrolliert in welcher Reihenfolge welche Art von Anfragen gemacht werden. Dabei können die durchsuchten Felder und die Strategie (Exakt oder Fuzzy) festgelegt werden.
+- params (verpflichtend): eine einfach kommaseparierte Liste von durchsuchbaren Parametern. Die Parameter müssen namentlich mit indizierten Feldern im Solr-Core übereinstimmen.
+- strategies (verpflichtend): Ein JSON, welches kontrolliert in welcher Reihenfolge welche Art von Anfragen gemacht werden. Dabei können die durchsuchten Felder und die Strategie (Exakt oder Fuzzy) festgelegt werden.
+- solr_url (optional): ein String, der die zu nutzende Solr-BaseURL inklusive Core-Name spezifiziert. Wenn nicht angegeben wird http://localhost:8983/addresses verwendet
+- coordinate_field: ein String, der das Koordinatenfeld in Solr definiert. Wenn nicht angegeben, kann die Reversegeokodierung nicht genutzt werden. Das Feld muss vom Typ "location" sein.
+- housenumber_field: spezifiziert den Namen des Hausnummerfeldes. Wenn angegeben wird bei dieses zur effizienteren Suche und Sortierung genutzt.
+- result_field: spezifiziert ein Feld, welches den gewünschten Output enthält. Der Feldtyp ist "text" muss aber ein valides JSON sein. Wenn nicht vorhanden, wird das komplette Dokument zurückgegeben.
+- params_fuzzy: Die durchsuchbaren Parameter sollten (soweit anwendbar) vom Typ String sein um false Positives zu vermeiden. Wenn man in der Fuzzy Suche mehr potentielle Ergebnisse haben möchte, kann man den Inhalt der normalen Suchfelder beibehalten aber als typ "text_general" verwenden
+
 
 ---
 
