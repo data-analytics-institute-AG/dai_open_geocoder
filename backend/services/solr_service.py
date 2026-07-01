@@ -161,8 +161,9 @@ def _query_fuzzy(rows=5, **kwargs):
 
         if queried_hnr_int is not None:
             distance_expr = f"dist(1,{housenumber_int_field},{queried_hnr_int})"
-
-        params["sort"] = f"score desc, {distance_expr} asc"
+            params["sort"] = f"score desc, {distance_expr} asc"
+        else:
+            params["sort"] = "score desc"
 
     print("DEBUG: solr-Parameter:", params)
     return _solr_select(params)
